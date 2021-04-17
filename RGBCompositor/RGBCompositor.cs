@@ -8,6 +8,7 @@ using System.Drawing;
 using System.IO;
 using System.Reflection;
 
+
 namespace RGBCompositorPlugin
 {
     public class PluginSupportInfo : IPluginSupportInfo
@@ -25,6 +26,7 @@ namespace RGBCompositorPlugin
         private Surface rSurface;
         private Surface gSurface;
         private Surface bSurface;
+        private Surface aSurface;
 
         private static readonly Bitmap StaticIcon = new Bitmap(typeof(RGBCompositor), "RGBCompositor.png");
 
@@ -37,7 +39,8 @@ namespace RGBCompositorPlugin
         {
             RedFile,
             GreenFile,
-            BlueFile
+            BlueFile,
+            AlphaFile,
         }
 
         protected override PropertyCollection OnCreatePropertyCollection()
@@ -47,6 +50,7 @@ namespace RGBCompositorPlugin
                 new StringProperty(PropertyNames.RedFile, string.Empty),
                 new StringProperty(PropertyNames.GreenFile, string.Empty),
                 new StringProperty(PropertyNames.BlueFile, string.Empty),
+                new StringProperty(PropertyNames.AlphaFile, string.Empty),
             };
 
             return new PropertyCollection(props);
@@ -68,6 +72,10 @@ namespace RGBCompositorPlugin
             configUI.SetPropertyControlValue(PropertyNames.BlueFile, ControlInfoPropertyNames.FileTypes, new string[] { "bmp", "gif", "jpg", "jpeg", "png" });
             configUI.SetPropertyControlType(PropertyNames.BlueFile, PropertyControlType.FileChooser);
 
+            configUI.SetPropertyControlValue(PropertyNames.AlphaFile, ControlInfoPropertyNames.DisplayName, "Alpha File");
+            configUI.SetPropertyControlValue(PropertyNames.AlphaFile, ControlInfoPropertyNames.FileTypes, new string[] { "bmp", "gif", "jpg", "jpeg", "png" });
+            configUI.SetPropertyControlType(PropertyNames.AlphaFile, PropertyControlType.FileChooser);
+
             return configUI;
         }
 
@@ -76,6 +84,7 @@ namespace RGBCompositorPlugin
             string rPath = newToken.GetProperty<StringProperty>(PropertyNames.RedFile).Value;
             string gPath = newToken.GetProperty<StringProperty>(PropertyNames.GreenFile).Value;
             string bPath = newToken.GetProperty<StringProperty>(PropertyNames.BlueFile).Value;
+            string aPath = newToken.GetProperty<StringProperty>(PropertyNames.AlphaFile).Value;
 
             Bitmap rImage = null;
             if (File.Exists(rPath))
@@ -152,6 +161,31 @@ namespace RGBCompositorPlugin
 
             bImage?.Dispose();
 
+            Bitmap aImage = null;
+            if (File.Exists(aPath))
+            {
+                try
+                {
+                    aImage = new Bitmap(aPath);
+                }
+                catch
+                {
+                }
+            }
+
+            if (this.aSurface != null)
+            {
+                this.aSurface.Dispose();
+                this.aSurface = null;
+            }
+
+            if (aImage != null && aImage?.Size == srcArgs.Size)
+            {
+                this.aSurface = Surface.CopyFromBitmap(aImage);
+            }
+
+            aImage?.Dispose();
+
             base.OnSetRenderInfo(newToken, dstArgs, srcArgs);
         }
 
@@ -169,8 +203,9 @@ namespace RGBCompositorPlugin
             bool rLoaded = this.rSurface != null;
             bool gLoaded = this.gSurface != null;
             bool bLoaded = this.bSurface != null;
+            bool aLoaded = this.aSurface != null;
 
-            if (!rLoaded && !gLoaded && !bLoaded)
+            if (!rLoaded && !gLoaded && !bLoaded && !aLoaded)
             {
                 dst.Clear(rect, ColorBgra.Transparent);
                 return;
@@ -182,10 +217,10 @@ namespace RGBCompositorPlugin
                 for (int x = rect.Left; x < rect.Right; x++)
                 {
                     dst[x, y] = ColorBgra.FromBgra(
-                        bLoaded ? this.bSurface[x, y].B : byte.MinValue,
-                        gLoaded ? this.gSurface[x, y].G : byte.MinValue,
-                        rLoaded ? this.rSurface[x, y].R : byte.MinValue,
-                        byte.MaxValue);
+                        bLoaded ? this.bSurface[x, y].B : byte.MaxValue,
+                        gLoaded ? this.gSurface[x, y].G : byte.MaxValue,
+                        rLoaded ? this.rSurface[x, y].R : byte.MaxValue,
+                        aLoaded ? this.aSurface[x, y].R : byte.MaxValue);
                 }
             }
         }
@@ -197,6 +232,7 @@ namespace RGBCompositorPlugin
                 this.rSurface?.Dispose();
                 this.gSurface?.Dispose();
                 this.bSurface?.Dispose();
+                this.aSurface?.Dispose();
             }
 
             base.OnDispose(disposing);
