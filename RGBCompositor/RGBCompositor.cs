@@ -240,21 +240,19 @@ namespace RGBCompositorPlugin
             bool bLoaded = bSurface != null;
             bool aLoaded = aSurface != null;
 
-            if (IsCancelRequested || !rLoaded && !gLoaded && !bLoaded && !aLoaded)
-            {
-                dst.Clear(rect, ColorBgra.Transparent);
+            if (IsCancelRequested)
                 return;
-            }
 
             for (int y = rect.Top; y < rect.Bottom; y++)
             {
                 for (int x = rect.Left; x < rect.Right; x++)
                 {
+                    var color = dst[x, y];
                     dst[x, y] = ColorBgra.FromBgra(
-                        bLoaded ? bSurface[x, y][input1]: byte.MaxValue,
-                        gLoaded ? gSurface[x, y][input2] : byte.MaxValue,
-                        rLoaded ? rSurface[x, y][input3] : byte.MaxValue,
-                        aLoaded ? aSurface[x, y][input4] : byte.MaxValue);
+                        bLoaded ? bSurface[x, y][input1] : color.B,
+                        gLoaded ? gSurface[x, y][input2] : color.G,
+                        rLoaded ? rSurface[x, y][input3] : color.R,
+                        aLoaded ? aSurface[x, y][input4] : color.A);
                 }
             }
         }
